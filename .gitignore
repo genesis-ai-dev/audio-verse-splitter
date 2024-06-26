@@ -1,0 +1,6 @@
+audio/
+ignore/
+__pycache__/
+*.txt
+*.wav
+*.mp3
