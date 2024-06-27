@@ -98,7 +98,13 @@ def split_audio(audio_file, alignment, verses, transcribed_words, output_path='a
 
     for i, (start, end) in enumerate(alignment):
         start_ms = max(0, transcribed_words[start]['start'])
-        end_ms = min(total_duration, transcribed_words[end-1]['end'] + 300) # end-1
+        
+        # For the last verse, capture up to the end of the audio file, unless it exceeds 2 additional seconds
+        if i == len(alignment) - 1:
+            end_ms = min(total_duration, transcribed_words[end-1]['end'] + 2000)  # Add up to 2 seconds
+            end_ms = min(end_ms, total_duration)  # Ensure we don't exceed the total duration
+        else:
+            end_ms = min(total_duration, transcribed_words[end]['start'])
         
         if start_ms >= end_ms or start_ms >= total_duration or end_ms <= 0:
             print(f"Warning: Invalid time range for verse {verses[i][0]}. Skipping.")
@@ -122,42 +128,111 @@ def split_audio(audio_file, alignment, verses, transcribed_words, output_path='a
         print(f"Duration: {end_ms - start_ms}ms")
         print("-" * 80)
 
+
+def process_single_file(audio_file, verses, language, output_folder):
+    transcribed_words = transcribe_audio_with_timestamps(audio_file, language=language)
+    if transcribed_words:
+        alignment = align_verses(transcribed_words, verses)
+        
+        print("\nFinal Alignment:")
+        for i, (start, end) in enumerate(alignment):
+            print(f"Verse {verses[i][0]}: {start} to {end}")
+        
+        split_audio(audio_file, alignment, verses, transcribed_words, output_path=output_folder)
+    else:
+        print(f"Transcription failed for {audio_file}. Unable to proceed with alignment and splitting.")
+
+def process_book_folder(book_folder, verses, language, output_folder):
+    book_name = os.path.basename(book_folder)
+    current_chapter = None
+    chapter_verses = []
+
+    for verse in verses:
+        verse_ref = verse[0].split('_')
+        if verse_ref[0] != book_name:
+            continue
+
+        chapter = int(verse_ref[1].split(':')[0])
+        if chapter != current_chapter:
+            if chapter_verses:
+                process_chapter(book_folder, current_chapter, chapter_verses, language, output_folder)
+            current_chapter = chapter
+            chapter_verses = []
+        chapter_verses.append(verse)
+
+    if chapter_verses:
+        process_chapter(book_folder, current_chapter, chapter_verses, language, output_folder)
+
+def process_chapter(book_folder, chapter, verses, language, output_folder):
+    audio_file = os.path.join(book_folder, f"{chapter}.mp3")
+    if os.path.exists(audio_file):
+        book_name = os.path.basename(book_folder)
+        book_number = ScriptureReference.get_book_number(book_name)
+        numbered_book_name = f"{book_number:02d}_{book_name}"
+        chapter_output_folder = os.path.join(output_folder, numbered_book_name, str(chapter))
+        os.makedirs(chapter_output_folder, exist_ok=True)
+        process_single_file(audio_file, verses, language, chapter_output_folder)
+    else:
+        print(f"Audio file not found for chapter {chapter} in {book_folder}")
+
+def process_multiple_books(audio_folder, verses, language, output_folder):
+    current_book = None
+    book_verses = []
+
+    for verse in verses:
+        book = verse[0].split('_')[0]
+        if book != current_book:
+            if book_verses:
+                book_folder = os.path.join(audio_folder, current_book)
+                if os.path.exists(book_folder):
+                    process_book_folder(book_folder, book_verses, language, output_folder)
+                else:
+                    print(f"Book folder not found: {book_folder}")
+            current_book = book
+            book_verses = []
+        book_verses.append(verse)
+
+    if book_verses:
+        book_folder = os.path.join(audio_folder, current_book)
+        if os.path.exists(book_folder):
+            process_book_folder(book_folder, book_verses, language, output_folder)
+        else:
+            print(f"Book folder not found: {book_folder}")
+
 def main():
-    
-    
     #*******************PARAMETERS*******************#
-    language = 'es' # e.g., 'es' (text and audio language)
-    audio_file = 'audio/esp/MAT/1.mp3' # e.g., 'audio/eng/bible_090_asv_64kb.mp3'
-    start_verse = 'mat 1:1' # e.g., 'mat 1:1' (first verse of audio file)
-    end_verse = 'mat 1:25' # e.g., 'mat 1:25' (last verse of audio file)
-    ebible = 'spa-spaRV1909' # e.g., 'spa-spaRV1909' (uses eng versification by default)
+    language = 'es'  # e.g., 'es' (text and audio language)
+    audio_file = 'audio/esp'  # Can be a file, book folder, or folder containing book folders
+    start_verse = 'nam 1:1'  # e.g., 'mat 1:1' (first verse of audio file)
+    end_verse = 'zep 3:20'  # e.g., 'jhn 21:25' (last verse of audio file)
+    ebible = 'spa-spaRV1909'  # e.g., 'spa-spaRV1909' (uses eng versification by default)
     audio_output_folder = 'audio/output' 
-
     #************************************************#
-
 
     start_time = time.time()
     try:
-        transcribed_words = transcribe_audio_with_timestamps(audio_file, language=language)
-        if transcribed_words:
-            verses = ScriptureReference(start_verse, end_verse, bible_filename=ebible).verses # 'mal 1:1', 'mal 4:6' 'eng-eng-asv'
-            alignment = align_verses(transcribed_words, verses)
-            
-            print("\nFinal Alignment:")
-            for i, (start, end) in enumerate(alignment):
-                print(f"Verse {verses[i][0]}: {start} to {end}")
-            
-            split_audio(audio_file, alignment, verses, transcribed_words, output_path=audio_output_folder)
+        scripture_ref = ScriptureReference(start_verse, end_verse, bible_filename=ebible)
+        verses = scripture_ref.verses
+
+        if os.path.isfile(audio_file):
+            # Process single file
+            process_single_file(audio_file, verses, language, audio_output_folder)
+        elif os.path.isdir(audio_file):
+            if any(os.path.isdir(os.path.join(audio_file, d)) for d in os.listdir(audio_file)):
+                # Process multiple books
+                process_multiple_books(audio_file, verses, language, audio_output_folder)
+            else:
+                # Process single book folder
+                process_book_folder(audio_file, verses, language, audio_output_folder)
         else:
-            print("Transcription failed. Unable to proceed with alignment and splitting.")
+            print(f"Invalid audio_file path: {audio_file}")
     except Exception as e:
         print(f"An error occurred during processing: {str(e)}")
         import traceback
         traceback.print_exc()
 
-    end_time = time.time()  # Record the end time
-    total_time = end_time - start_time  # Calculate the total time
-
+    end_time = time.time()
+    total_time = end_time - start_time
     print(f"\nTotal execution time: {total_time:.2f} seconds")
 
 if __name__ == "__main__":

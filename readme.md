@@ -14,11 +14,11 @@ Edit parameters in `main.py`:
 
 ```python
 language = 'es' # Audio language
-audio_file = 'audio/esp/MAT/1.mp3' # Input audio file
-start_verse = 'mat 1:1' # First verse
-end_verse = 'mat 1:25' # Last verse
-ebible = 'spa-spaRV1909' # Bible version
-audio_output_folder = 'audio/output' # Output directory
+audio_file = 'audio/esp/MAT/1.mp3' # Can point to audio file, folder containing files, or folder containing book folders containing files
+start_verse = 'mat 1:1' # First verse (of input audio file)
+end_verse = 'mat 1:25' # Last verse (of input audio file)
+ebible = 'spa-spaRV1909' # Bible version (must be same translation as audio)
+audio_output_folder = 'audio/output' # Output directory (will automatically create folders for books/chapters if needed)
 ```
 
 Run:
@@ -31,5 +31,5 @@ python main.py
 
 1. Transcribes audio using Whisper
 2. Aligns transcription with expected verse text
-3. Splits audio into individual verse files
+3. Splits audio file(s) into individual verse files
 

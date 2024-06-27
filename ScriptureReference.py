@@ -5,202 +5,268 @@ import os
 
 book_codes = {
     'GEN': {
-        'codes': ['Gen', 'Gn', '1M']
+        'codes': ['Gen', 'Gn', '1M'],
+        'number': 1
     },
     'EXO': {
-        'codes': ['Ex', '2M']
+        'codes': ['Ex', '2M'],
+        'number': 2
     },
     'LEV': {
-        'codes': ['Lev', 'Lv', '3M']
+        'codes': ['Lev', 'Lv', '3M'],
+        'number': 3
     },
     'NUM': {
-        'codes': ['Nm', 'Nu', '4M']
+        'codes': ['Nm', 'Nu', '4M'],
+        'number': 4
     },
     'DEU': {
-        'codes': ['Deut', 'Dt', '5M']
+        'codes': ['Deut', 'Dt', '5M'],
+        'number': 5
     },
     'JOS': {
-        'codes': ['Josh', 'Jos']
+        'codes': ['Josh', 'Jos'],
+        'number': 6
     },
     'JDG': {
-        'codes': ['Jdg', 'Judg']
+        'codes': ['Jdg', 'Judg'],
+        'number': 7
     },
     'RUT': {
-        'codes': ['Ru', 'Rth']
+        'codes': ['Ru', 'Rth'],
+        'number': 8
     },
     '1SA': {
-        'codes': ['1Sam', '1Sm']
+        'codes': ['1Sam', '1Sm'],
+        'number': 9
     },
     '2SA': {
-        'codes': ['2Sam', '2Sm']
+        'codes': ['2Sam', '2Sm'],
+        'number': 10
     },
     '1KI': {
-        'codes': ['1Kg', '1K']
+        'codes': ['1Kg', '1K'],
+        'number': 11
     },
     '2KI': {
-        'codes': ['2Kg', '2K']
+        'codes': ['2Kg', '2K'],
+        'number': 12
     },
     '1CH': {
-        'codes': ['1Ch']
+        'codes': ['1Ch'],
+        'number': 13
     },
     '2CH': {
-        'codes': ['2Ch']
+        'codes': ['2Ch'],
+        'number': 14
     },
     'EZR': {
-        'codes': ['Ezr']
+        'codes': ['Ezr'],
+        'number': 15
     },
     'NEH': {
-        'codes': ['Neh']
+        'codes': ['Neh'],
+        'number': 16
     },
     'EST': {
-        'codes': ['Est']
+        'codes': ['Est'],
+        'number': 17
     },
     'JOB': {
-        'codes': ['Jb', 'Job']
+        'codes': ['Jb', 'Job'],
+        'number': 18
     },
     'PSA': {
-        'codes': ['Ps']
+        'codes': ['Ps'],
+        'number': 19
     },
     'PRO': {
-        'codes': ['Pr']
+        'codes': ['Pr'],
+        'number': 20
     },
     'ECC': {
-        'codes': ['Ec', 'Qoh']
+        'codes': ['Ec', 'Qoh'],
+        'number': 21
     },
     'SNG': {
-        'codes': ['Sos', 'Song']
+        'codes': ['Sos', 'Song'],
+        'number': 22
     },
     'ISA': {
-        'codes': ['Isa']
+        'codes': ['Isa'],
+        'number': 23
     },
     'JER': {
-        'codes': ['Jer', 'Jr']
+        'codes': ['Jer', 'Jr'],
+        'number': 24
     },
     'LAM': {
-        'codes': ['Lam', 'Lm']
+        'codes': ['Lam', 'Lm'],
+        'number': 25
     },
     'EZK': {
-        'codes': ['Ezek', 'Ezk']
+        'codes': ['Ezek', 'Ezk'],
+        'number': 26
     },
     'DAN': {
-        'codes': ['Dn', 'Dan']
+        'codes': ['Dn', 'Dan'],
+        'number': 27
     },
     'HOS': {
-        'codes': ['Hos', 'Hs']
+        'codes': ['Hos', 'Hs'],
+        'number': 28
     },
     'JOL': {
-        'codes': ['Joel', 'Jl']
+        'codes': ['Joel', 'Jl'],
+        'number': 29
     },
     'AMO': {
-        'codes': ['Am']
+        'codes': ['Am'],
+        'number': 30
     },
     'OBA': {
-        'codes': ['Ob']
+        'codes': ['Ob'],
+        'number': 31
     },
     'JON': {
-        'codes': ['Jon']
+        'codes': ['Jon'],
+        'number': 32
     },
     'MIC': {
-        'codes': ['Mi', 'Mc']
+        'codes': ['Mi', 'Mc'],
+        'number': 33
     },
     'NAM': {
-        'codes': ['Na']
+        'codes': ['Na'],
+        'number': 34
     },
     'HAB': {
-        'codes': ['Hab']
+        'codes': ['Hab'],
+        'number': 35
     },
     'ZEP': {
-        'codes': ['Zep', 'Zp']
+        'codes': ['Zep', 'Zp'],
+        'number': 36
     },
     'HAG': {
-        'codes': ['Hag', 'Hg']
+        'codes': ['Hag', 'Hg'],
+        'number': 37
     },
     'ZEC': {
-        'codes': ['Zc', 'Zec']
+        'codes': ['Zc', 'Zec'],
+        'number': 38
     },
     'MAL': {
-        'codes': ['Mal', 'Ml']
+        'codes': ['Mal', 'Ml'],
+        'number': 39
     },
     'MAT': {
-        'codes': ['Mt', 'Mat']
+        'codes': ['Mt', 'Mat'],
+        'number': 40
     },
     'MRK': {
-        'codes': ['Mk', 'Mar']
+        'codes': ['Mk', 'Mar'],
+        'number': 41
     },
     'LUK': {
-        'codes': ['Lk', 'Lu']
+        'codes': ['Lk', 'Lu'],
+        'number': 42
     },
     'JHN': {
-        'codes': ['Jn', 'Joh', 'Jhn']
+        'codes': ['Jn', 'Joh', 'Jhn'],
+        'number': 43
     },
     'ACT': {
-        'codes': ['Ac']
+        'codes': ['Ac'],
+        'number': 44
     },
     'ROM': {
-        'codes': ['Ro', 'Rm']
+        'codes': ['Ro', 'Rm'],
+        'number': 45
     },
     '1CO': {
-        'codes': ['1Co']
+        'codes': ['1Co'],
+        'number': 46
     },
     '2CO': {
-        'codes': ['2Co']
+        'codes': ['2Co'],
+        'number': 47
     },
     'GAL': {
-        'codes': ['Gal', 'Gl']
+        'codes': ['Gal', 'Gl'],
+        'number': 48
     },
     'EPH': {
-        'codes': ['Ep']
+        'codes': ['Ep'],
+        'number': 49
     },
     'PHP': {
-        'codes': ['Php', 'Philip']
+        'codes': ['Php', 'Philip'],
+        'number': 50
     },
     'COL': {
-        'codes': ['Col']
+        'codes': ['Col'],
+        'number': 51
     },
     '1TH': {
-        'codes': ['1Th']
+        'codes': ['1Th'],
+        'number': 52
     },
     '2TH': {
-        'codes': ['2Th']
+        'codes': ['2Th'],
+        'number': 53
     },
     '1TI': {
-        'codes': ['1Ti', '1Tm']
+        'codes': ['1Ti', '1Tm'],
+        'number': 54
     },
     '2TI': {
-        'codes': ['2Ti', '2Tm']
+        'codes': ['2Ti', '2Tm'],
+        'number': 55
     },
     'TIT': {
         'codes': ['Tit'],
+        'number': 56
     },
     'PHM': {
         'codes': ['Phile', 'Phm'],
+        'number': 57
     },
     'HEB': {
         'codes': ['Hb', 'Heb'],
+        'number': 58
     },
     'JAS': {
         'codes': ['Ja', 'Jm'],
+        'number': 59
     },
     '1PE': {
         'codes': ['1Pe', '2Pt'],
+        'number': 60
     },
     '2PE': {
         'codes': ['2Pe', '2Pt'],
+        'number': 61
     },
     '1JN': {
         'codes': ['1Jn', '1Jo', '1Jh'],
+        'number': 62
     },
     '2JN': {
         'codes': ['2Jn', '2Jo', '2Jh'],
+        'number': 63
     },
     '3JN': {
         'codes': ['3Jn', '3Jo', '3Jh'],
+        'number': 64
     },
     'JUD': {
         'codes': ['Ju', 'Jd'],
+        'number': 65
     },
     'REV': {
         'codes': ['Rev', 'Rv'],
+        'number': 66
     }
 }
 
@@ -222,6 +288,10 @@ class ScriptureReference:
             self.verses = self.get_verses_between_refs()
         elif source_type == 'usfm':
             self.verses = self.extract_verses_from_usfm()
+
+    @staticmethod
+    def get_book_number(book_code):
+        return book_codes.get(book_code, {}).get('number', 0)
 
     @classmethod
     def parse_scripture_reference(cls, input_ref):
@@ -261,7 +331,8 @@ class ScriptureReference:
             verses = [line.strip() for line in lines]
 
 
-        
+        # The commented code below is an attempt to obtain alternate versification by interpreting .vrs files from ebible repo
+        # The attempt was unsuccessful, so the code was commented out and the vref_eng.txt file was used instead
         # response = requests.get(f'https://raw.githubusercontent.com/BibleNLP/ebible/main/metadata/{self.versification}.vrs')
         # if response.status_code == 200:
             # lines = response.text.splitlines()
@@ -302,13 +373,28 @@ class ScriptureReference:
         else:
             return []
 
+    
     def get_verses_between_refs(self):
         verses = self.load_verses()
         bible_text = self.load_bible_text()
-        start_index = verses.index(f"{self.start_ref['bookCode']} {self.start_ref['startChapter']}:{self.start_ref['startVerse']}")
-        end_index = verses.index(f"{self.end_ref['bookCode']} {self.end_ref['endChapter']}:{self.end_ref['endVerse']}")
-        return [[f"{verses[i]}".replace(' ', '_'), f"{bible_text[i]}"] for i in range(start_index, end_index + 1)]
-    
+        
+        def find_index(ref):
+            for i, verse in enumerate(verses):
+                if ref in verse.split('-'):
+                    return i
+            return -1
+        
+        start_ref_str = f"{self.start_ref['bookCode']} {self.start_ref['startChapter']}:{self.start_ref['startVerse']}"
+        end_ref_str = f"{self.end_ref['bookCode']} {self.end_ref['endChapter']}:{self.end_ref['endVerse']}"
+        
+        start_index = find_index(start_ref_str)
+        end_index = find_index(end_ref_str)
+        
+        if start_index == -1 or end_index == -1:
+            return []
+        
+        return [[verses[i].replace(' ', '_'), bible_text[i]] for i in range(start_index, end_index + 1)]
+
     def extract_verses_from_usfm(self):
         input_directory = self.bible_filename  # Assuming bible_filename is now a directory path for USFM files
         verses = []
