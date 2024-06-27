@@ -1,5 +1,5 @@
 from ScriptureReference import ScriptureReference
 
-verses = ScriptureReference('mal 1:1', 'mal 4:6', bible_filename='eng-eng-asv').verses #spa-sparvg  spa-spaRV1909
+verses = ScriptureReference('mat 1:1', 'mat 1:25', bible_filename='spa-spaRV1909').verses #spa-sparvg  spa-spaRV1909
 
 [print (verse) for verse in verses]
