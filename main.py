@@ -5,11 +5,22 @@ from ScriptureReference import ScriptureReference
 from fuzzywuzzy import fuzz
 import re
 import time
-
+import torch
 
 def transcribe_audio_with_timestamps(audio_file, language):
     print("Transcribing audio with timestamps using Whisper...")
-    model = whisper.load_model("base")
+    
+    # Set the device to the first CUDA device (usually your NVIDIA GPU)
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # if torch.cuda.is_available():
+    #     print(f"Using GPU: {torch.cuda.get_device_name(0)}")
+    # else:
+    #     print("Using CPU")
+
+    # # Load the Whisper model on the specified device
+    # model = whisper.load_model("small", device=device)
+    model = whisper.load_model("small")
     result = model.transcribe(audio_file, language=language, word_timestamps=True)
     
     transcribed_words = []
@@ -22,75 +33,119 @@ def transcribe_audio_with_timestamps(audio_file, language):
             })
     
     print(f"Transcription complete. Total words: {len(transcribed_words)}")
+    # Print full transcription as string
+    print(' '.join([w['word'] for w in transcribed_words]))
+    
+
     return transcribed_words
 
 def preprocess_text(text):
     return re.sub(r'\W+', ' ', text.lower()).strip()
 
-def align_verses(transcribed_words, verses):
+
+def align_verses(transcribed_words, verses, book_name, output_folder, extension_percentage=300):
     alignment = []
-    total_words = sum(len(verse[1].split()) for verse in verses)
-    total_duration = transcribed_words[-1]['end'] - transcribed_words[0]['start']
-    avg_time_per_word = total_duration / total_words
+    visualization_data = []
+    total_chars = sum(len(verse[1]) for verse in verses)
+    total_transcribed_words = len(transcribed_words)
 
-    cumulative_words = 0
-    for i, verse in enumerate(verses):
+    print(f"Total words in transcribed audio: {total_transcribed_words}")
+    print(f"Total characters in verses: {total_chars}")
+    print(f"Search window extension: {extension_percentage}%")
+
+    cumulative_chars = 0
+    fuzzy_ratios = []
+
+    for verse_index, verse in enumerate(verses):
         verse_text = preprocess_text(verse[1])
-        verse_words = verse_text.split()
-        verse_word_count = len(verse_words)
+        verse_char_count = len(verse_text)
 
-        # Calculate expected start and end times
-        expected_start = (cumulative_words / total_words) * total_duration
-        expected_end = ((cumulative_words + verse_word_count) / total_words) * total_duration
+        # Calculate relative position and size
+        verse_start_ratio = cumulative_chars / total_chars
+        verse_end_ratio = (cumulative_chars + verse_char_count) / total_chars
 
-        # Define search window
-        window_size = verse_word_count * avg_time_per_word * 2  # Double the expected size for flexibility
-        start_window = max(0, int((expected_start - window_size) / avg_time_per_word))
-        end_window = min(len(transcribed_words), int((expected_end + window_size) / avg_time_per_word))
+        # Calculate expected start and end indices
+        expected_start = int(verse_start_ratio * total_transcribed_words)
+        expected_end = int(verse_end_ratio * total_transcribed_words)
+
+        # Calculate search window
+        window_size = expected_end - expected_start
+        extension = int(window_size * (extension_percentage / 100))
+        if verse_index == 0:
+            extension *= 2  # Double extension for the first verse
+
+        start_window = max(0, expected_start - extension)
+        end_window = min(total_transcribed_words, expected_end + extension)
+
+        # Compensate if boundaries are reached
+        if start_window == 0:
+            end_window = min(total_transcribed_words, end_window + (expected_start - start_window))
+        if end_window == total_transcribed_words:
+            start_window = max(0, start_window - (end_window - expected_end))
 
         print(f"\nAligning Verse {verse[0]}:")
-        print(f"Expected start: {expected_start:.2f}ms, Expected end: {expected_end:.2f}ms")
+        print(f"Expected start: {expected_start}, Expected end: {expected_end}")
         print(f"Search window: {start_window} to {end_window}")
 
-        best_start_ratio = 0
-        best_end_ratio = 0
+        best_ratio = 0
         best_start_index = start_window
-        best_end_index = min(start_window + verse_word_count, end_window)
+        best_end_index = min(start_window + window_size, end_window)
 
-        # Slide window to find best start
-        for i in range(start_window, end_window - verse_word_count + 1):
-            window = ' '.join([w['word'] for w in transcribed_words[i:i+verse_word_count]])
-            ratio = fuzz.partial_ratio(window, verse_text)
-            if ratio > best_start_ratio:
-                best_start_ratio = ratio
-                best_start_index = i
+        for start in range(start_window, end_window - 1):
+            for end in range(start + 1, end_window):
+                window = ' '.join([w['word'] for w in transcribed_words[start:end]])
+                ratio = fuzz.ratio(window, verse_text)
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    best_start_index = start
+                    best_end_index = end
 
-        # Slide end of window to find best end
-        min_end = best_start_index + verse_word_count // 2
-        max_end = min(best_start_index + int(verse_word_count * 1.5), end_window)
-        for j in range(min_end, max_end):
-            window = ' '.join([w['word'] for w in transcribed_words[best_start_index:j]])
-            ratio = fuzz.ratio(window, verse_text)
-            if ratio > best_end_ratio:
-                best_end_ratio = ratio
-                best_end_index = j
-
-        if best_start_ratio == 0 or best_end_ratio == 0:
-            # Fallback: use the expected start and end
-            best_start_index = max(0, min(int(expected_start / avg_time_per_word), len(transcribed_words) - 1))
-            best_end_index = max(best_start_index + 1, min(int(expected_end / avg_time_per_word), len(transcribed_words)))
+        if best_ratio == 0:
             print("No good match found. Using expected positions.")
+            best_start_index = expected_start
+            best_end_index = expected_end
 
         alignment.append((best_start_index, best_end_index))
-        cumulative_words += verse_word_count
+        cumulative_chars += verse_char_count
 
         aligned_text = ' '.join([w['word'] for w in transcribed_words[best_start_index:best_end_index]])
-        print(f"Best start ratio: {best_start_ratio}, Best end ratio: {best_end_ratio}")
+        print(f"Best ratio: {best_ratio}")
         print(f"Aligned text: {aligned_text}")
         print(f"Actual text: {verse_text}")
         print("-" * 80)
 
+        fuzzy_ratios.append(f"{verse[0]}: {best_ratio}")
+        
+        # Store visualization data
+        visualization_data.append({
+            'verse_ref': verse[0],
+            'verse_text': verse_text,
+            'start_window': start_window,
+            'end_window': end_window,
+            'best_start': best_start_index,
+            'best_end': best_end_index,
+            'transcribed_words': transcribed_words
+        })
+
+        # In the align_verses function, just before appending to visualization_data
+        print(f"Debug - Verse {verse[0]}:")
+        print(f"Start window: {start_window}, End window: {end_window}")
+        print(f"Best start: {best_start_index}, Best end: {best_end_index}")
+        print(f"Aligned text: {aligned_text}")
+
+    book_number = ScriptureReference.get_book_number(book_name)
+    numbered_book_name = f"{book_number:02d}_{book_name}"
+    fuzzy_file_path = os.path.join(output_folder, f"{numbered_book_name}_fuzzy_ratios.txt")
+    os.makedirs(os.path.dirname(fuzzy_file_path), exist_ok=True)
+    with open(fuzzy_file_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(fuzzy_ratios))
+
+    # visualize_alignment(visualization_data, output_folder)
+
+    
+
     return alignment
+
 
 def split_audio(audio_file, alignment, verses, transcribed_words, output_path='audio/output'):
     audio = AudioSegment.from_mp3(audio_file)
@@ -101,10 +156,10 @@ def split_audio(audio_file, alignment, verses, transcribed_words, output_path='a
         
         # For the last verse, capture up to the end of the audio file, unless it exceeds 2 additional seconds
         if i == len(alignment) - 1:
-            end_ms = min(total_duration, transcribed_words[end-1]['end'] + 2000)  # Add up to 2 seconds
+            end_ms = min(total_duration, transcribed_words[min(end-1, len(transcribed_words)-1)]['end'] + 2000)  # Add up to 2 seconds
             end_ms = min(end_ms, total_duration)  # Ensure we don't exceed the total duration
         else:
-            end_ms = min(total_duration, transcribed_words[end]['start'])
+            end_ms = min(total_duration, transcribed_words[min(end, len(transcribed_words)-1)]['start'])
         
         if start_ms >= end_ms or start_ms >= total_duration or end_ms <= 0:
             print(f"Warning: Invalid time range for verse {verses[i][0]}. Skipping.")
@@ -121,7 +176,7 @@ def split_audio(audio_file, alignment, verses, transcribed_words, output_path='a
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
         verse_audio.export(output_file_path, format="mp3")
         
-        verse_text = ' '.join([w['word'] for w in transcribed_words[start:end]])
+        verse_text = ' '.join([w['word'] for w in transcribed_words[start:min(end, len(transcribed_words))]])
         print(f"Exported {output_filename}: {verses[i][0]} ({end - start} words)")
         print(f"Transcribed text: {verse_text}")
         print(f"Start time: {start_ms}ms, End time: {end_ms}ms")
@@ -132,7 +187,8 @@ def split_audio(audio_file, alignment, verses, transcribed_words, output_path='a
 def process_single_file(audio_file, verses, language, output_folder):
     transcribed_words = transcribe_audio_with_timestamps(audio_file, language=language)
     if transcribed_words:
-        alignment = align_verses(transcribed_words, verses)
+        book_name = verses[0][0].split('_')[0]  # Extract book name from the first verse reference
+        alignment = align_verses(transcribed_words, verses, book_name, output_folder)
         
         print("\nFinal Alignment:")
         for i, (start, end) in enumerate(alignment):
@@ -149,10 +205,15 @@ def process_book_folder(book_folder, verses, language, output_folder):
 
     for verse in verses:
         verse_ref = verse[0].split('_')
-        if verse_ref[0] != book_name:
+        if len(verse_ref) < 2 or verse_ref[0] != book_name:
             continue
 
-        chapter = int(verse_ref[1].split(':')[0])
+        try:
+            chapter = int(verse_ref[1].split(':')[0])
+        except (IndexError, ValueError):
+            print(f"Warning: Skipping malformed verse reference: {verse[0]}")
+            continue
+
         if chapter != current_chapter:
             if chapter_verses:
                 process_chapter(book_folder, current_chapter, chapter_verses, language, output_folder)
@@ -202,16 +263,20 @@ def process_multiple_books(audio_folder, verses, language, output_folder):
 def main():
     #*******************PARAMETERS*******************#
     language = 'es'  # e.g., 'es' (text and audio language)
-    audio_file = 'audio/esp'  # Can be a file, book folder, or folder containing book folders
-    start_verse = 'nam 1:1'  # e.g., 'mat 1:1' (first verse of audio file)
-    end_verse = 'zep 3:20'  # e.g., 'jhn 21:25' (last verse of audio file)
-    ebible = 'spa-spaRV1909'  # e.g., 'spa-spaRV1909' (uses eng versification by default)
-    audio_output_folder = 'audio/output' 
+    audio_file = 'audio/esp/PDT'  # Can be a file, book folder, or folder containing book folders
+    start_verse = 'gen 11:1'  # e.g., 'mat 1:1' (first verse of audio file)
+    #errors at lev 5:17 (3583s) num 25
+    end_verse = 'rev 22:21'  # e.g., 'jhn 21:25' (last verse of audio file)
+    ebible = 'C:/Users/caleb/Downloads/SPAWTC_palabra_de_dios_para_todos_text/content/chapters'  # e.g., 'spa-spaRV1909' (uses eng versification by default)
+    bible_type = 'xhtml' # 'ebible'
+    audio_output_folder = 'audio/output/PDT' 
     #************************************************#
+
+
 
     start_time = time.time()
     try:
-        scripture_ref = ScriptureReference(start_verse, end_verse, bible_filename=ebible)
+        scripture_ref = ScriptureReference(start_verse, end_verse, bible_filename=ebible, source_type=bible_type)
         verses = scripture_ref.verses
 
         if os.path.isfile(audio_file):

@@ -2,6 +2,7 @@ import requests
 from functools import cache
 import re
 import os
+from bs4 import BeautifulSoup
 
 book_codes = {
     'GEN': {
@@ -272,11 +273,7 @@ book_codes = {
 
 
 class ScriptureReference:
-    # def __init__(self, start_ref, end_ref=None, bible_filename='eng-engwmbb'):
-    #     self.start_ref = self.parse_scripture_reference(start_ref)
-    #     self.end_ref = self.parse_scripture_reference(end_ref) if end_ref else self.start_ref
-    #     self.bible_url = f"https://raw.githubusercontent.com/BibleNLP/ebible/main/corpus/{bible_filename}.txt"
-    #     self.verses = self.get_verses_between_refs()
+    
     def __init__(self, start_ref, end_ref=None, bible_filename='eng-engwmbb', source_type='ebible', versification='eng'):
         self.start_ref = self.parse_scripture_reference(start_ref)
         self.end_ref = self.parse_scripture_reference(end_ref) if end_ref else self.start_ref
@@ -288,6 +285,8 @@ class ScriptureReference:
             self.verses = self.get_verses_between_refs()
         elif source_type == 'usfm':
             self.verses = self.extract_verses_from_usfm()
+        elif source_type == 'xhtml':
+            self.verses = self.extract_verses_from_xhtml()
 
     @staticmethod
     def get_book_number(book_code):
@@ -329,42 +328,7 @@ class ScriptureReference:
         with open('vref_eng.txt', 'r') as file:
             lines = file.readlines()
             verses = [line.strip() for line in lines]
-
-
-        # The commented code below is an attempt to obtain alternate versification by interpreting .vrs files from ebible repo
-        # The attempt was unsuccessful, so the code was commented out and the vref_eng.txt file was used instead
-        # response = requests.get(f'https://raw.githubusercontent.com/BibleNLP/ebible/main/metadata/{self.versification}.vrs')
-        # if response.status_code == 200:
-            # lines = response.text.splitlines()
-            # verses = []
-            # start_processing = False
-            
-            # for line in lines:
-            #     if line.startswith('#') or not line.strip():
-            #         continue
-            #     if line.startswith('GEN'):
-            #         start_processing = True
-            #     if start_processing:
-            #         parts = line.split()
-            #         book = parts[0]
-            #         chapters = parts[1:]
-            #         for chapter in chapters:
-            #             chapter_verses = chapter.split(':')
-            #             if len(chapter_verses) != 2:
-            #                 continue
-            #             chapter_number, verse_count = chapter_verses
-            #             try:
-            #                 verse_count = int(verse_count)
-            #             except ValueError:
-            #                 continue
-            #             for verse in range(1, verse_count + 1):
-            #                 verses.append(f"{book} {chapter_number}:{verse}")
-            #         if line.startswith('REV'):
-            #             break
-           
             return verses
-        # else:
-        #     return []
 
     def load_bible_text(self):
         response = requests.get(self.bible_url)
@@ -418,6 +382,50 @@ class ScriptureReference:
                         formatted_verse = f"{book} {chapter}:{verse_number} {verse_text.strip()}"
                         formatted_verse = [f"{book}_{chapter}:{verse_number}", verse_text.strip()]
                         verses.append(formatted_verse)
+        return verses
+    
+    def extract_verses_from_xhtml(self):
+        verses = []
+        start_book = self.start_ref['bookCode']
+        end_book = self.end_ref['bookCode']
+        start_chapter = self.start_ref['startChapter']
+        end_chapter = self.end_ref['endChapter']
+
+        for book_code in range(self.get_book_number(start_book), self.get_book_number(end_book) + 1):
+            book = next((code for code, details in book_codes.items() if details['number'] == book_code), None)
+            if not book:
+                continue
+
+            for chapter in range(start_chapter if book == start_book else 1,
+                                 end_chapter + 1 if book == end_book else 150):  # Assuming no book has more than 150 chapters
+                file_path = os.path.join(self.bible_filename, f"{book}{chapter}.xhtml")
+                if not os.path.exists(file_path):
+                    break
+
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    soup = BeautifulSoup(file, 'html.parser')
+                    verse_elements = soup.select('sup.v')
+
+                    for verse_elem in verse_elements:
+                        verse_num = verse_elem['data-verse']
+                        if (book == start_book and chapter == start_chapter and int(verse_num) < self.start_ref['startVerse']) or \
+                           (book == end_book and chapter == end_chapter and int(verse_num) > self.end_ref['endVerse']):
+                            continue
+
+                        verse_text = ''
+                        for sibling in verse_elem.next_siblings:
+                            if sibling.name == 'sup' and 'v' in sibling.get('class', []):
+                                break
+                            if sibling.name == 'section':
+                                break
+                            verse_text += sibling.get_text(strip=True)
+
+                        # Clean up the verse text
+                        verse_text = ' '.join(verse_text.split())
+
+                        verse_ref = f"{book}_{chapter}:{verse_num}"
+                        verses.append([verse_ref, verse_text.strip()])
+
         return verses
 
 # Example usage:
