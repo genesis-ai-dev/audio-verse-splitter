@@ -22,7 +22,7 @@ book_codes = {
         'number': 4
     },
     'DEU': {
-        'codes': ['Deut', 'Dt', '5M'],
+        'codes': ['Deu', 'Dt', '5M'],
         'number': 5
     },
     'JOS': {
@@ -38,11 +38,11 @@ book_codes = {
         'number': 8
     },
     '1SA': {
-        'codes': ['1Sam', '1Sm'],
+        'codes': ['1Sam', '1Sm', '1Sa'],
         'number': 9
     },
     '2SA': {
-        'codes': ['2Sam', '2Sm'],
+        'codes': ['2Sam', '2Sm', '2Sa'],
         'number': 10
     },
     '1KI': {
@@ -166,7 +166,7 @@ book_codes = {
         'number': 40
     },
     'MRK': {
-        'codes': ['Mk', 'Mar'],
+        'codes': ['Mk', 'Mar', 'Mrk'],
         'number': 41
     },
     'LUK': {
