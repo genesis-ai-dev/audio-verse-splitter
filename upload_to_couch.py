@@ -17,6 +17,19 @@ password = os.getenv('COUCHDB_PASSWORD')
 couch = couchdb.Server(f'https://{username}:{password}@couchdb-n66j.onrender.com')
 db = couch['assets']
 
+def check_connection():
+    try:
+        version = couch.version()
+        print("Successfully connected to CouchDB")
+        print(f"Server version: {version}")
+        print("Attempting to access the 'assets' database...")
+        db_info = db.info()
+        print(f"Successfully accessed 'assets' database. Doc count: {db_info['doc_count']}")
+    except Exception as e:
+        print(f"Error: {e}")
+
+check_connection()
+
 # Paths
 audio_base_path = 'audio/output/PDT_webm'
 xhtml_dir = 'C:/Users/caleb/Downloads/SPAWTC_palabra_de_dios_para_todos_text/content/chapters'
@@ -53,8 +66,10 @@ scores = load_scores()
 def upload_verse(verse_ref, verse_text, audio_path, max_retries=3, base_delay=1):
     for attempt in range(max_retries):
         try:
-            with open(audio_path, 'rb') as audio_file:
-                audio_data = audio_file.read()
+            audio_data = None
+            if audio_path:
+                with open(audio_path, 'rb') as audio_file:
+                    audio_data = audio_file.read()
 
             unique_id = str(uuid.uuid4())
             bible_version = "PDT"
@@ -77,7 +92,7 @@ def upload_verse(verse_ref, verse_text, audio_path, max_retries=3, base_delay=1)
             }
             score = scores.get(verse_ref, 0)
             print(f"Score for {verse_ref}: {score}")
-            if score > 66.96:
+            if score > 66.96 and audio_data:
                 try:
                     encoded_audio = base64.b64encode(audio_data).decode('utf-8')
                     document['_attachments'] = {
@@ -92,7 +107,7 @@ def upload_verse(verse_ref, verse_text, audio_path, max_retries=3, base_delay=1)
                     pass
 
             doc_id, doc_rev = db.save(document)
-            print(f"Uploaded: {verse_ref}" + (" with audio" if scores.get(verse_ref, 0) > 66.96 else ""))
+            print(f"Uploaded: {verse_ref}" + (" with audio" if score > 66.96 and audio_data else ""))
             return  # Success, exit the function
 
         except couchdb.http.ResourceConflict:
@@ -112,10 +127,9 @@ def upload_verse(verse_ref, verse_text, audio_path, max_retries=3, base_delay=1)
             return  # For unexpected errors, we don't retry
     
 
-    
-
 def main():
-    verses = ScriptureReference('1ki 22:18', 'rev 22:21', bible_filename=xhtml_dir, source_type='xhtml').verses
+    verses = ScriptureReference('num 7:26', bible_filename=xhtml_dir, source_type='xhtml').verses
+
 
     for i, verse in enumerate(verses):
         verse_ref, verse_text = verse
@@ -129,13 +143,18 @@ def main():
         if os.path.exists(audio_path):
             upload_verse(verse_ref, verse_text, audio_path)
         else:
-            print(f"Audio file not found for {verse_ref}")
+            print(f"Audio file not found for {verse_ref}. Uploading text only.")
+            upload_verse(verse_ref, verse_text, None)  # Pass None for audio_path
 
         if i == 2:  # After the first 3 verses have been uploaded
             print("First 3 verses uploaded. Continue? (y/n)")
             if input().lower() != 'y':
                 print("Upload stopped.")
                 return
+
+        if (i + 1) % 1000 == 0:  # Pause every 1000 uploads
+            print(f"Uploaded {i + 1} documents. Pausing for 10 seconds...")
+            time.sleep(10)
 
         time.sleep(0.1)  # Small delay to prevent overwhelming the server
 

@@ -42,6 +42,60 @@ def transcribe_audio_with_timestamps(audio_file, language):
 def preprocess_text(text):
     return re.sub(r'\W+', ' ', text.lower()).strip()
 
+def visualize_alignment(visualization_data, output_folder, context_size=20):
+    visualization = []
+    for data in visualization_data:
+        verse_ref = data['verse_ref']
+        verse_text = data['verse_text']
+        start_window = data['start_window']
+        end_window = data['end_window']
+        best_start = data['best_start']
+        best_end = data['best_end']
+        transcribed_words = data['transcribed_words']
+
+        # Get context around the aligned portion
+        context_start = max(0, start_window - context_size)
+        context_end = min(len(transcribed_words), end_window + context_size)
+        context_words = transcribed_words[context_start:context_end]
+        context = ' '.join([w['word'] for w in context_words])
+
+        # Calculate character positions
+        char_positions = [0]
+        for word in context_words:
+            char_positions.append(char_positions[-1] + len(word['word']) + 1)  # +1 for space
+
+        # Calculate relative positions for visualization
+        rel_start_window = char_positions[start_window - context_start] if start_window >= context_start else 0
+        rel_end_window = char_positions[end_window - context_start] if end_window <= context_end else len(context)
+        rel_best_start = char_positions[best_start - context_start] if best_start >= context_start else 0
+        rel_best_end = char_positions[best_end - context_start] if best_end <= context_end else len(context)
+
+        # Create visualization lines
+        v_ref = f"v_ref: {verse_text}"
+        start_line = ' ' * rel_start_window + 's' * (rel_end_window - rel_start_window)
+        end_line = ' ' * rel_start_window + 'e' * (rel_end_window - rel_start_window)
+        align_line = ' ' * rel_best_start + 's' + '-' * (rel_best_end - rel_best_start - 2) + 'e'
+
+        # Add to visualization list
+        visualization.extend([
+            v_ref,
+            start_line,
+            end_line,
+            context,
+            align_line,
+            ''  # Empty line for separation
+        ])
+
+    # Save visualization to file
+    book_name = visualization_data[0]['verse_ref'].split('_')[0]
+    book_number = ScriptureReference.get_book_number(book_name)
+    numbered_book_name = f"{book_number:02d}_{book_name}"
+    vis_file_path = os.path.join(output_folder, f"{numbered_book_name}_alignment_visualization.txt")
+    os.makedirs(os.path.dirname(vis_file_path), exist_ok=True)
+    with open(vis_file_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(visualization))
+
+    print(f"Alignment visualization saved to: {vis_file_path}")
 
 def align_verses(transcribed_words, verses, book_name, output_folder, extension_percentage=300):
     alignment = []
@@ -140,7 +194,7 @@ def align_verses(transcribed_words, verses, book_name, output_folder, extension_
     with open(fuzzy_file_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(fuzzy_ratios))
 
-    # visualize_alignment(visualization_data, output_folder)
+    visualize_alignment(visualization_data, output_folder)
 
     
 
@@ -264,9 +318,9 @@ def main():
     #*******************PARAMETERS*******************#
     language = 'es'  # e.g., 'es' (text and audio language)
     audio_file = 'audio/esp/PDT'  # Can be a file, book folder, or folder containing book folders
-    start_verse = 'gen 11:1'  # e.g., 'mat 1:1' (first verse of audio file)
+    start_verse = '1co 16:1'  # e.g., 'mat 1:1' (first verse of audio file)
     #errors at lev 5:17 (3583s) num 25
-    end_verse = 'rev 22:21'  # e.g., 'jhn 21:25' (last verse of audio file)
+    end_verse = '1co 16:24'  # e.g., 'jhn 21:25' (last verse of audio file)
     ebible = 'C:/Users/caleb/Downloads/SPAWTC_palabra_de_dios_para_todos_text/content/chapters'  # e.g., 'spa-spaRV1909' (uses eng versification by default)
     bible_type = 'xhtml' # 'ebible'
     audio_output_folder = 'audio/output/PDT' 
