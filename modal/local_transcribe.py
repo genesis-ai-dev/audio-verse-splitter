@@ -12,6 +12,8 @@ db = couch['assets']
 
 modal_url = f"https://{modal_url}.modal.run/transcribe"  # Replace with your actual Modal URL
 
+transcription_model = os.getenv('TRANSCRIPTION_MODEL', 'whisper')  # Default to whisper if not set
+
 def fetch_audio_from_couchdb(doc_id):
     try:
         doc = db[doc_id]
@@ -41,7 +43,7 @@ def main():
     audio_data = fetch_audio_from_couchdb(doc_id)
     if audio_data:
         transcription = transcribe_audio(audio_data, language)
-        print(f"Transcription: {transcription}")
+        print(f"Transcription ({transcription_model}): {transcription}")
     else:
         print("No audio attachment found or an error occurred.")
 
